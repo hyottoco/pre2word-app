@@ -4,66 +4,176 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>英単語テスト（重複なしランダム）</title>
-  <style>
-    body {
-      font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
-      margin: 0; padding: 20px;
-    }
-    .card {
-      max-width: 720px; margin: 0 auto; padding: 18px;
-      border: 1px solid #ddd; border-radius: 14px;
-    }
-    .top {
-      display:flex; justify-content:space-between; align-items:center;
-      gap:12px; flex-wrap:wrap;
-    }
-    .badge {
-      font-size: 14px; padding: 6px 10px;
-      border-radius: 999px; border: 1px solid #ddd;
-    }
-    .word { font-size: 44px; font-weight: 700; margin: 18px 0 10px; line-height: 1.1; }
-    .meaning { font-size: 28px; margin: 10px 0 0; min-height: 40px; }
-    .hint { color:#666; font-size:14px; margin-top: 10px; }
-    .btns { display:flex; gap:10px; margin-top: 18px; flex-wrap: wrap; }
-    button {
-      font-size: 18px; padding: 12px 14px; border-radius: 12px;
-      border: 1px solid #ddd; background: #fff;
-      cursor: pointer;
-    }
-    button:active { transform: translateY(1px); }
-    .primary { font-weight: 700; }
-    .danger { border-color:#f2c; }
 
-    .toggle {
-      display:flex; align-items:center; gap:10px;
-      margin-top: 10px; padding: 10px 12px;
-      border: 1px solid #ddd; border-radius: 12px;
+  <style>
+    /* =========================
+       Theme variables
+       ========================= */
+    :root{
+      --bg: #ffffff;
+      --fg: #111111;
+      --muted: #666666;
+      --card: #ffffff;
+      --border: #dddddd;
+      --btn-bg: #ffffff;
+      --btn-fg: #111111;
+      --shadow: rgba(0,0,0,0.04);
+    }
+    body.dark{
+      --bg: #0f1115;
+      --fg: #e9e9ea;
+      --muted: #a7a7ad;
+      --card: #141824;
+      --border: #2a2f3a;
+      --btn-bg: #141824;
+      --btn-fg: #e9e9ea;
+      --shadow: rgba(0,0,0,0.28);
+    }
+
+    /* =========================
+       Base
+       ========================= */
+    body{
+      font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: var(--bg);
+      color: var(--fg);
+      transition: background .15s ease, color .15s ease;
+    }
+
+    .card{
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--card);
+      box-shadow: 0 6px 24px var(--shadow);
+      transition: background .15s ease, border-color .15s ease;
+    }
+
+    .top{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .badge{
+      font-size: 14px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--fg);
+      transition: border-color .15s ease, color .15s ease;
+    }
+
+    .word{
+      font-size: 44px;
+      font-weight: 800;
+      margin: 18px 0 10px;
+      line-height: 1.1;
+      word-break: break-word;
+    }
+    .meaning{
+      font-size: 28px;
+      margin: 10px 0 0;
+      min-height: 40px;
+      word-break: break-word;
+    }
+
+    .btns{
+      display:flex;
+      gap:10px;
+      margin-top: 18px;
       flex-wrap: wrap;
     }
-    .toggle label { font-size: 16px; user-select: none; }
-    .toggle input { width: 20px; height: 20px; }
-    .small { font-size: 13px; color:#666; margin-top: 6px; }
+
+    button{
+      font-size: 18px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--btn-bg);
+      color: var(--btn-fg);
+      cursor: pointer;
+      transition: background .15s ease, color .15s ease, border-color .15s ease, transform .05s ease;
+    }
+    button:active{ transform: translateY(1px); }
+    .primary{ font-weight: 800; }
+    .danger{ border-color:#f2c; }
+
+    .toggle{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      flex-wrap: wrap;
+      background: transparent;
+      transition: border-color .15s ease;
+    }
+    .toggle label{
+      font-size: 16px;
+      user-select: none;
+    }
+    .toggle input{
+      width: 20px;
+      height: 20px;
+      accent-color: #6aa6ff;
+    }
+    .small{
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
 
     /* 間違いチェック（答え合わせ時だけ表示） */
-    .missBox {
+    .missBox{
       display:none;
       margin-top: 12px;
       padding: 10px 12px;
-      border: 1px solid #ddd;
+      border: 1px solid var(--border);
       border-radius: 12px;
       gap: 10px;
       align-items: center;
+      background: transparent;
     }
-    .missBox.show { display:flex; }
-    .missBox input { width: 22px; height: 22px; }
-    .missBox .label { font-size: 16px; user-select: none; }
+    .missBox.show{ display:flex; }
+    .missBox input{ width: 22px; height: 22px; accent-color:#ff6aa6; }
+    .missBox .label{ font-size: 16px; user-select: none; }
+
+    /* ちょい見た目 */
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-top: 10px;
+    }
+    .hint{
+      color: var(--muted);
+      font-size: 13px;
+    }
   </style>
 </head>
+
 <body>
   <div class="card">
     <div class="top">
       <div class="badge" id="progress">0 / 0</div>
       <div class="badge" id="mode">英→日</div>
+    </div>
+
+    <!-- ダークモード -->
+    <div class="row">
+      <button id="themeBtn" class="badge" type="button">🌙 ダーク：OFF</button>
+      <span class="hint">（設定は保存されます）</span>
     </div>
 
     <!-- 自動発音スイッチ -->
@@ -80,7 +190,7 @@
       <button class="small danger" id="clearWrongBtn" type="button">間違いリストを消す</button>
     </div>
 
-    <div class="word" id="word">（単語リストを入れてください）</div>
+    <div class="word" id="word">（単語リストを読み込み中…）</div>
     <div class="meaning" id="meaning"></div>
 
     <!-- ★答え合わせ表示中だけ出る：間違えたチェック -->
@@ -754,15 +864,35 @@ const VOCAB = [
   { en: "protective", ja: "保護するための／防護の" },
 ];
 
-
 // ========= 保存キー =========
-const AUTO_SPEAK_KEY = "vocab_auto_speak_v1";
-const KEY_ALL   = "vocab_app_state_v1";          // 全単語モードの状態
-const KEY_WRONG = "vocab_wrong_state_v1";        // 間違いのみモードの状態
-const KEY_WRONG_SET = "vocab_wrong_set_v1";      // 間違いリスト（enで管理）
-const KEY_WRONG_ONLY = "vocab_wrong_only_v1";    // モード設定
+const AUTO_SPEAK_KEY   = "vocab_auto_speak_v1";
+const KEY_ALL          = "vocab_app_state_v1";
+const KEY_WRONG        = "vocab_wrong_state_v1";
+const KEY_WRONG_SET    = "vocab_wrong_set_v1";
+const KEY_WRONG_ONLY   = "vocab_wrong_only_v1";
 
-// ======== 発音（Web Speech API） ========
+// ★ダークモード保存キー
+const KEY_THEME_DARK   = "vocab_theme_dark_v1";
+
+/* =========================
+   Theme (Dark mode)
+   ========================= */
+function loadDarkMode(){
+  return localStorage.getItem(KEY_THEME_DARK) === "1";
+}
+function saveDarkMode(on){
+  localStorage.setItem(KEY_THEME_DARK, on ? "1" : "0");
+}
+function applyTheme(){
+  const dark = loadDarkMode();
+  document.body.classList.toggle("dark", dark);
+  const btn = document.getElementById("themeBtn");
+  btn.textContent = dark ? "🌙 ダーク：ON" : "☀️ ダーク：OFF";
+}
+
+/* =========================
+   Speech (Web Speech API)
+   ========================= */
 function pickEnglishVoice() {
   const voices = speechSynthesis.getVoices();
   const preferred =
@@ -792,7 +922,9 @@ if ("speechSynthesis" in window) {
   };
 }
 
-// ======== ユーティリティ ========
+/* =========================
+   Utils
+   ========================= */
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -800,7 +932,6 @@ function shuffle(arr) {
   }
   return arr;
 }
-
 function saveJSON(key, obj) { localStorage.setItem(key, JSON.stringify(obj)); }
 function loadJSON(key) {
   try {
@@ -809,7 +940,9 @@ function loadJSON(key) {
   } catch { return null; }
 }
 
-// ======== 自動発音設定 ========
+/* =========================
+   Auto speak
+   ========================= */
 function loadAutoSpeak() {
   try {
     const raw = localStorage.getItem(AUTO_SPEAK_KEY);
@@ -821,7 +954,9 @@ function saveAutoSpeak(on) {
   localStorage.setItem(AUTO_SPEAK_KEY, on ? "1" : "0");
 }
 
-// ======== 間違いリスト（Set） ========
+/* =========================
+   Wrong list (Set)
+   ========================= */
 function loadWrongSet() {
   const arr = loadJSON(KEY_WRONG_SET);
   return new Set(Array.isArray(arr) ? arr : []);
@@ -834,7 +969,9 @@ function updateWrongCountUI() {
   document.getElementById("wrongCount").textContent = `間違い: ${set.size}`;
 }
 
-// ======== 出題モード（全 / 間違いのみ） ========
+/* =========================
+   Mode (All / Wrong only)
+   ========================= */
 function loadWrongOnly() {
   const v = localStorage.getItem(KEY_WRONG_ONLY);
   return v === "1";
@@ -846,12 +983,11 @@ function getActiveStateKey() {
   return loadWrongOnly() ? KEY_WRONG : KEY_ALL;
 }
 
-// ======== 出題プール（orderが指す配列） ========
+/* =========================
+   Pool / State
+   ========================= */
 function getPoolIndices() {
-  if (!loadWrongOnly()) {
-    return [...Array(VOCAB.length).keys()];
-  }
-  // 間違いのみ：wrongSetに入ってる単語だけ
+  if (!loadWrongOnly()) return [...Array(VOCAB.length).keys()];
   const set = loadWrongSet();
   const idxs = [];
   for (let i = 0; i < VOCAB.length; i++) {
@@ -861,8 +997,8 @@ function getPoolIndices() {
 }
 
 function freshStateForPool(poolIdxs) {
-  const order = shuffle([...Array(poolIdxs.length).keys()]); // poolIdxsの中でシャッフル
-  return { poolIdxs, order, index: 0, phase: 0 };
+  const order = shuffle([...Array(poolIdxs.length).keys()]);
+  return { poolIdxs, order, index: 0, phase: 0 }; // phase:0 英語のみ / 1 日本語表示
 }
 
 function loadState() {
@@ -873,7 +1009,7 @@ function loadState() {
   if (typeof st.index !== "number" || typeof st.phase !== "number") return null;
   if (st.phase !== 0 && st.phase !== 1) return null;
 
-  // プールが変わった可能性があるので、最低限チェック
+  // プール変化（間違い追加/削除やモード変更）への最低限の追従
   const poolNow = getPoolIndices();
   if (st.poolIdxs.length !== poolNow.length) return null;
 
@@ -885,14 +1021,15 @@ function saveState(st) {
   saveJSON(key, st);
 }
 
-// ======== 現在の単語取得 ========
 function getCurrentItem(st) {
   if (!st.poolIdxs.length) return null;
-  const poolIndex = st.poolIdxs[ st.order[st.index] ]; // VOCABのindex
+  const poolIndex = st.poolIdxs[ st.order[st.index] ];
   return { item: VOCAB[poolIndex], vocabIndex: poolIndex };
 }
 
-// ======== UI更新 ========
+/* =========================
+   UI
+   ========================= */
 function setUI(st) {
   const wordEl = document.getElementById("word");
   const meaningEl = document.getElementById("meaning");
@@ -903,21 +1040,18 @@ function setUI(st) {
   const missBox = document.getElementById("missBox");
   const missToggle = document.getElementById("missToggle");
 
-  // モード表示
   modeEl.textContent = loadWrongOnly() ? "英→日（間違いのみ）" : "英→日";
 
-  // プールが空なら案内
   if (!st.poolIdxs.length) {
     wordEl.textContent = "間違いリストが空です";
     meaningEl.textContent = "「間違いリストだけ出題する」をOFFにするか、間違いを登録してください。";
-    progressEl.textContent = `0 / 0`;
+    progressEl.textContent = "0 / 0";
     btn.textContent = "はじめる";
     missBox.classList.remove("show");
     missToggle.checked = false;
     return;
   }
 
-  // 1周終わったら再シャッフル
   if (st.index >= st.poolIdxs.length) {
     st = freshStateForPool(getPoolIndices());
     saveState(st);
@@ -928,7 +1062,7 @@ function setUI(st) {
 
   progressEl.textContent = `${st.index + 1} / ${st.poolIdxs.length}`;
 
-  // 答え合わせチェックの初期状態（この単語がすでに間違いリストにあるか）
+  // すでに間違いリストに入っているか
   const wrongSet = loadWrongSet();
   missToggle.checked = wrongSet.has(current.en);
 
@@ -936,30 +1070,20 @@ function setUI(st) {
     wordEl.textContent = current.en;
     meaningEl.textContent = "";
     btn.textContent = "日本語を表示（答え合わせ）";
-
-    // 答え合わせ前はチェック欄を隠す
     missBox.classList.remove("show");
 
-    if (loadAutoSpeak()) {
-      speakEnglish(current.en);
-    }
+    if (loadAutoSpeak()) speakEnglish(current.en);
   } else {
     wordEl.textContent = current.en;
     meaningEl.textContent = current.ja;
-    btn.textContent = "正解だったかな？次へ語GO！";
-
-    // ★答え合わせ中だけチェック欄表示
+    btn.textContent = "正解だったかな？次へGO！";
     missBox.classList.add("show");
   }
 }
 
-// ======== 次へ（英→日→次の英） ========
 function nextAction() {
   let st = loadState();
-  if (!st) {
-    const pool = getPoolIndices();
-    st = freshStateForPool(pool);
-  }
+  if (!st) st = freshStateForPool(getPoolIndices());
 
   if (st.phase === 0) {
     st.phase = 1;
@@ -973,18 +1097,27 @@ function nextAction() {
 
 function resetAll() {
   try { speechSynthesis.cancel(); } catch {}
-  const pool = getPoolIndices();
-  const st = freshStateForPool(pool);
+  const st = freshStateForPool(getPoolIndices());
   saveState(st);
   setUI(st);
 }
 
-// ======== 初期化 ========
+/* =========================
+   Init
+   ========================= */
 function init() {
   if (!VOCAB.length) {
     document.getElementById("word").textContent = "VOCABが空です（単語リストを入れてください）";
     return;
   }
+
+  // テーマ適用 + ボタン
+  applyTheme();
+  document.getElementById("themeBtn").addEventListener("click", () => {
+    const next = !loadDarkMode();
+    saveDarkMode(next);
+    applyTheme();
+  });
 
   // 自動発音トグル
   const autoToggle = document.getElementById("autoSpeakToggle");
@@ -1005,16 +1138,13 @@ function init() {
   wrongOnlyToggle.checked = loadWrongOnly();
   wrongOnlyToggle.addEventListener("change", () => {
     saveWrongOnly(wrongOnlyToggle.checked);
-
-    // モード切替したら、そのモード用にリセットして開始
-    const pool = getPoolIndices();
-    const st = freshStateForPool(pool);
+    const st = freshStateForPool(getPoolIndices());
     saveState(st);
     updateWrongCountUI();
     setUI(st);
   });
 
-  // 間違いチェック（答え合わせ中に押す）
+  // 間違いチェック（答え合わせ中）
   document.getElementById("missToggle").addEventListener("change", (e) => {
     const st = loadState();
     if (!st) return;
@@ -1024,6 +1154,7 @@ function init() {
     const set = loadWrongSet();
     if (e.target.checked) set.add(cur.item.en);
     else set.delete(cur.item.en);
+
     saveWrongSet(set);
     updateWrongCountUI();
   });
@@ -1034,14 +1165,14 @@ function init() {
     updateWrongCountUI();
 
     // 間違いのみモード中ならプールが空になるのでUI更新
-    const pool = getPoolIndices();
-    const st = freshStateForPool(pool);
+    const st = freshStateForPool(getPoolIndices());
     saveState(st);
     setUI(st);
   });
 
-  // ボタン類
+  // ボタン
   document.getElementById("nextBtn").addEventListener("click", nextAction);
+  document.getElementById("resetBtn").addEventListener("click", resetAll);
 
   document.getElementById("speakBtn").addEventListener("click", () => {
     const st = loadState();
@@ -1051,13 +1182,10 @@ function init() {
     speakEnglish(cur.item.en);
   });
 
-  document.getElementById("resetBtn").addEventListener("click", resetAll);
-
   // 初期表示
   updateWrongCountUI();
-  const pool = getPoolIndices();
   let st = loadState();
-  if (!st) st = freshStateForPool(pool);
+  if (!st) st = freshStateForPool(getPoolIndices());
   saveState(st);
   setUI(st);
 }
