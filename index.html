@@ -38,10 +38,25 @@
       display:flex; align-items:center; gap:10px;
       margin-top: 10px; padding: 10px 12px;
       border: 1px solid #ddd; border-radius: 12px;
+      flex-wrap: wrap;
     }
     .toggle label { font-size: 16px; user-select: none; }
     .toggle input { width: 20px; height: 20px; }
     .small { font-size: 13px; color:#666; margin-top: 6px; }
+
+    /* 間違いチェック（答え合わせ時だけ表示） */
+    .missBox {
+      display:none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      gap: 10px;
+      align-items: center;
+    }
+    .missBox.show { display:flex; }
+    .missBox input { width: 22px; height: 22px; }
+    .missBox .label { font-size: 16px; user-select: none; }
   </style>
 </head>
 <body>
@@ -56,11 +71,23 @@
       <input type="checkbox" id="autoSpeakToggle" />
       <label for="autoSpeakToggle">英語が表示されたら自動で発音する</label>
     </div>
-    <div class="small">※iPadでは最初だけ「🔊発音」を1回押すと安定します。</div>
+
+    <!-- 出題モード切替（全 / 間違いのみ） -->
+    <div class="toggle">
+      <input type="checkbox" id="wrongOnlyToggle" />
+      <label for="wrongOnlyToggle">間違いリストだけ出題する</label>
+      <span class="badge" id="wrongCount">間違い: 0</span>
+      <button class="small danger" id="clearWrongBtn" type="button">間違いリストを消す</button>
+    </div>
 
     <div class="word" id="word">（単語リストを入れてください）</div>
     <div class="meaning" id="meaning"></div>
-    <div class="hint" id="hint">ボタン：英語表示 → 日本語表示 → 次の英語 …（🔊で発音）</div>
+
+    <!-- ★答え合わせ表示中だけ出る：間違えたチェック -->
+    <div class="missBox" id="missBox">
+      <input type="checkbox" id="missToggle" />
+      <label class="label" for="missToggle">この単語は間違えた（間違いリストに入れる）</label>
+    </div>
 
     <div class="btns">
       <button class="primary" id="nextBtn">はじめる</button>
@@ -728,52 +755,44 @@ const VOCAB = [
 ];
 
 
-// ======== 設定保存キー（自動発音ON/OFF） ========
+// ========= 保存キー =========
 const AUTO_SPEAK_KEY = "vocab_auto_speak_v1";
+const KEY_ALL   = "vocab_app_state_v1";          // 全単語モードの状態
+const KEY_WRONG = "vocab_wrong_state_v1";        // 間違いのみモードの状態
+const KEY_WRONG_SET = "vocab_wrong_set_v1";      // 間違いリスト（enで管理）
+const KEY_WRONG_ONLY = "vocab_wrong_only_v1";    // モード設定
 
 // ======== 発音（Web Speech API） ========
 function pickEnglishVoice() {
   const voices = speechSynthesis.getVoices();
-
-  // できるだけ「英語っぽい」声を優先して選ぶ（端末依存）
   const preferred =
     voices.find(v => /Samantha|Karen/i.test(v.name || "")) ||
     voices.find(v => (v.lang || "").toLowerCase().startsWith("en-us")) ||
     voices.find(v => (v.lang || "").toLowerCase().startsWith("en-gb")) ||
     voices.find(v => (v.lang || "").toLowerCase().startsWith("en")) ||
     null;
-
   return preferred;
 }
 
 function speakEnglish(text) {
   if (!("speechSynthesis" in window)) return;
-
-  // 連打したとき前の音声を止める
   try { speechSynthesis.cancel(); } catch {}
-
   const uttr = new SpeechSynthesisUtterance(String(text));
   uttr.rate = 1.0;
   uttr.pitch = 1.0;
-
   const voice = pickEnglishVoice();
   uttr.lang = voice?.lang || "en-US";
   if (voice) uttr.voice = voice;
-
   speechSynthesis.speak(uttr);
 }
 
-// iOS Safari対策：声リストの準備
 if ("speechSynthesis" in window) {
   speechSynthesis.onvoiceschanged = () => {
     try { speechSynthesis.getVoices(); } catch {}
   };
 }
 
-// ======== 保存キー（出題状態） ========
-const KEY = "vocab_app_state_v1";
-
-// ======== Fisher–Yates shuffle ========
+// ======== ユーティリティ ========
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -782,42 +801,95 @@ function shuffle(arr) {
   return arr;
 }
 
-function freshState() {
-  const order = shuffle([...Array(VOCAB.length).keys()]);
-  return { order, index: 0, phase: 0 };
-}
-
-function loadState() {
+function saveJSON(key, obj) { localStorage.setItem(key, JSON.stringify(obj)); }
+function loadJSON(key) {
   try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return null;
-    const st = JSON.parse(raw);
-    if (!st || !Array.isArray(st.order) || typeof st.index !== "number" || typeof st.phase !== "number") return null;
-    if (st.order.length !== VOCAB.length) return null;
-    if (st.index < 0 || st.index > VOCAB.length) return null;
-    if (st.phase !== 0 && st.phase !== 1) return null;
-    return st;
-  } catch {
-    return null;
-  }
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
 }
 
-function saveState(st) {
-  localStorage.setItem(KEY, JSON.stringify(st));
-}
-
-// ======== 自動発音設定の保存/読込 ========
+// ======== 自動発音設定 ========
 function loadAutoSpeak() {
   try {
     const raw = localStorage.getItem(AUTO_SPEAK_KEY);
-    if (raw === null) return false; // 初期OFF
+    if (raw === null) return false;
     return raw === "1";
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }
 function saveAutoSpeak(on) {
   localStorage.setItem(AUTO_SPEAK_KEY, on ? "1" : "0");
+}
+
+// ======== 間違いリスト（Set） ========
+function loadWrongSet() {
+  const arr = loadJSON(KEY_WRONG_SET);
+  return new Set(Array.isArray(arr) ? arr : []);
+}
+function saveWrongSet(set) {
+  saveJSON(KEY_WRONG_SET, Array.from(set));
+}
+function updateWrongCountUI() {
+  const set = loadWrongSet();
+  document.getElementById("wrongCount").textContent = `間違い: ${set.size}`;
+}
+
+// ======== 出題モード（全 / 間違いのみ） ========
+function loadWrongOnly() {
+  const v = localStorage.getItem(KEY_WRONG_ONLY);
+  return v === "1";
+}
+function saveWrongOnly(on) {
+  localStorage.setItem(KEY_WRONG_ONLY, on ? "1" : "0");
+}
+function getActiveStateKey() {
+  return loadWrongOnly() ? KEY_WRONG : KEY_ALL;
+}
+
+// ======== 出題プール（orderが指す配列） ========
+function getPoolIndices() {
+  if (!loadWrongOnly()) {
+    return [...Array(VOCAB.length).keys()];
+  }
+  // 間違いのみ：wrongSetに入ってる単語だけ
+  const set = loadWrongSet();
+  const idxs = [];
+  for (let i = 0; i < VOCAB.length; i++) {
+    if (set.has(VOCAB[i].en)) idxs.push(i);
+  }
+  return idxs;
+}
+
+function freshStateForPool(poolIdxs) {
+  const order = shuffle([...Array(poolIdxs.length).keys()]); // poolIdxsの中でシャッフル
+  return { poolIdxs, order, index: 0, phase: 0 };
+}
+
+function loadState() {
+  const key = getActiveStateKey();
+  const st = loadJSON(key);
+  if (!st) return null;
+  if (!Array.isArray(st.poolIdxs) || !Array.isArray(st.order)) return null;
+  if (typeof st.index !== "number" || typeof st.phase !== "number") return null;
+  if (st.phase !== 0 && st.phase !== 1) return null;
+
+  // プールが変わった可能性があるので、最低限チェック
+  const poolNow = getPoolIndices();
+  if (st.poolIdxs.length !== poolNow.length) return null;
+
+  return st;
+}
+
+function saveState(st) {
+  const key = getActiveStateKey();
+  saveJSON(key, st);
+}
+
+// ======== 現在の単語取得 ========
+function getCurrentItem(st) {
+  if (!st.poolIdxs.length) return null;
+  const poolIndex = st.poolIdxs[ st.order[st.index] ]; // VOCABのindex
+  return { item: VOCAB[poolIndex], vocabIndex: poolIndex };
 }
 
 // ======== UI更新 ========
@@ -825,23 +897,49 @@ function setUI(st) {
   const wordEl = document.getElementById("word");
   const meaningEl = document.getElementById("meaning");
   const progressEl = document.getElementById("progress");
+  const modeEl = document.getElementById("mode");
   const btn = document.getElementById("nextBtn");
 
-  // 1周終わったら新しいシャッフルで再スタート
-  if (st.index >= VOCAB.length) {
-    st = freshState();
+  const missBox = document.getElementById("missBox");
+  const missToggle = document.getElementById("missToggle");
+
+  // モード表示
+  modeEl.textContent = loadWrongOnly() ? "英→日（間違いのみ）" : "英→日";
+
+  // プールが空なら案内
+  if (!st.poolIdxs.length) {
+    wordEl.textContent = "間違いリストが空です";
+    meaningEl.textContent = "「間違いリストだけ出題する」をOFFにするか、間違いを登録してください。";
+    progressEl.textContent = `0 / 0`;
+    btn.textContent = "はじめる";
+    missBox.classList.remove("show");
+    missToggle.checked = false;
+    return;
+  }
+
+  // 1周終わったら再シャッフル
+  if (st.index >= st.poolIdxs.length) {
+    st = freshStateForPool(getPoolIndices());
     saveState(st);
   }
 
-  const current = VOCAB[st.order[st.index]];
-  progressEl.textContent = `${st.index + 1} / ${VOCAB.length}`;
+  const cur = getCurrentItem(st);
+  const current = cur.item;
+
+  progressEl.textContent = `${st.index + 1} / ${st.poolIdxs.length}`;
+
+  // 答え合わせチェックの初期状態（この単語がすでに間違いリストにあるか）
+  const wrongSet = loadWrongSet();
+  missToggle.checked = wrongSet.has(current.en);
 
   if (st.phase === 0) {
     wordEl.textContent = current.en;
     meaningEl.textContent = "";
     btn.textContent = "日本語を表示（答え合わせ）";
 
-    // ★自動発音（ONのときだけ）
+    // 答え合わせ前はチェック欄を隠す
+    missBox.classList.remove("show");
+
     if (loadAutoSpeak()) {
       speakEnglish(current.en);
     }
@@ -849,18 +947,24 @@ function setUI(st) {
     wordEl.textContent = current.en;
     meaningEl.textContent = current.ja;
     btn.textContent = "正解だったかな？次へ語GO！";
+
+    // ★答え合わせ中だけチェック欄表示
+    missBox.classList.add("show");
   }
 }
 
 // ======== 次へ（英→日→次の英） ========
 function nextAction() {
   let st = loadState();
-  if (!st) st = freshState();
+  if (!st) {
+    const pool = getPoolIndices();
+    st = freshStateForPool(pool);
+  }
 
   if (st.phase === 0) {
-    st.phase = 1;     // 日本語表示
+    st.phase = 1;
   } else {
-    st.phase = 0;     // 次の英語へ
+    st.phase = 0;
     st.index += 1;
   }
   saveState(st);
@@ -869,7 +973,8 @@ function nextAction() {
 
 function resetAll() {
   try { speechSynthesis.cancel(); } catch {}
-  const st = freshState();
+  const pool = getPoolIndices();
+  const st = freshStateForPool(pool);
   saveState(st);
   setUI(st);
 }
@@ -881,39 +986,80 @@ function init() {
     return;
   }
 
-  // 自動発音トグルの初期反映
-  const toggle = document.getElementById("autoSpeakToggle");
-  toggle.checked = loadAutoSpeak();
-  toggle.addEventListener("change", () => {
-    saveAutoSpeak(toggle.checked);
-    // ONに切り替えた瞬間、表示中の英単語を読みたい場合
-    if (toggle.checked) {
+  // 自動発音トグル
+  const autoToggle = document.getElementById("autoSpeakToggle");
+  autoToggle.checked = loadAutoSpeak();
+  autoToggle.addEventListener("change", () => {
+    saveAutoSpeak(autoToggle.checked);
+    if (autoToggle.checked) {
       const st = loadState();
       if (st && st.phase === 0) {
-        const current = VOCAB[st.order[st.index]];
-        speakEnglish(current.en);
+        const cur = getCurrentItem(st);
+        if (cur) speakEnglish(cur.item.en);
       }
     }
   });
 
-  let st = loadState();
-  if (!st) {
-    st = freshState();
-    saveState(st);
-  }
-  setUI(st);
+  // 間違いのみモードトグル
+  const wrongOnlyToggle = document.getElementById("wrongOnlyToggle");
+  wrongOnlyToggle.checked = loadWrongOnly();
+  wrongOnlyToggle.addEventListener("change", () => {
+    saveWrongOnly(wrongOnlyToggle.checked);
 
+    // モード切替したら、そのモード用にリセットして開始
+    const pool = getPoolIndices();
+    const st = freshStateForPool(pool);
+    saveState(st);
+    updateWrongCountUI();
+    setUI(st);
+  });
+
+  // 間違いチェック（答え合わせ中に押す）
+  document.getElementById("missToggle").addEventListener("change", (e) => {
+    const st = loadState();
+    if (!st) return;
+    const cur = getCurrentItem(st);
+    if (!cur) return;
+
+    const set = loadWrongSet();
+    if (e.target.checked) set.add(cur.item.en);
+    else set.delete(cur.item.en);
+    saveWrongSet(set);
+    updateWrongCountUI();
+  });
+
+  // 間違いリスト消去
+  document.getElementById("clearWrongBtn").addEventListener("click", () => {
+    saveWrongSet(new Set());
+    updateWrongCountUI();
+
+    // 間違いのみモード中ならプールが空になるのでUI更新
+    const pool = getPoolIndices();
+    const st = freshStateForPool(pool);
+    saveState(st);
+    setUI(st);
+  });
+
+  // ボタン類
   document.getElementById("nextBtn").addEventListener("click", nextAction);
 
-  // 🔊 発音ボタン：いつでも何回でも押せる
   document.getElementById("speakBtn").addEventListener("click", () => {
     const st = loadState();
     if (!st) return;
-    const current = VOCAB[st.order[st.index]];
-    speakEnglish(current.en);
+    const cur = getCurrentItem(st);
+    if (!cur) return;
+    speakEnglish(cur.item.en);
   });
 
   document.getElementById("resetBtn").addEventListener("click", resetAll);
+
+  // 初期表示
+  updateWrongCountUI();
+  const pool = getPoolIndices();
+  let st = loadState();
+  if (!st) st = freshStateForPool(pool);
+  saveState(st);
+  setUI(st);
 }
 
 init();
