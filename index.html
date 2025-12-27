@@ -28,12 +28,12 @@
     button {
       font-size: 18px; padding: 12px 14px; border-radius: 12px;
       border: 1px solid #ddd; background: #fff;
+      cursor: pointer;
     }
     button:active { transform: translateY(1px); }
     .primary { font-weight: 700; }
     .danger { border-color:#f2c; }
 
-    /* Toggle */
     .toggle {
       display:flex; align-items:center; gap:10px;
       margin-top: 10px; padding: 10px 12px;
@@ -727,37 +727,46 @@ const VOCAB = [
   { en: "protective", ja: "保護するための／防護の" },
 ];
 
+
 // ======== 設定保存キー（自動発音ON/OFF） ========
 const AUTO_SPEAK_KEY = "vocab_auto_speak_v1";
 
 // ======== 発音（Web Speech API） ========
-function speakEnglish(text) {
-  if (!("speechSynthesis" in window)) return;
+function pickEnglishVoice() {
+  const voices = speechSynthesis.getVoices();
 
-  // 連打したとき前の音声を止める
-  window.speechSynthesis.cancel();
-
-  const uttr = new SpeechSynthesisUtterance(text);
-  uttr.rate = 0.9; // 少しゆっくり（0.1〜10）
-
-  // 英語の声を優先して選ぶ（端末依存）
-  const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
-  const pick =
+  // できるだけ「英語っぽい」声を優先して選ぶ（端末依存）
+  const preferred =
+    voices.find(v => /Samantha|Karen/i.test(v.name || "")) ||
     voices.find(v => (v.lang || "").toLowerCase().startsWith("en-us")) ||
     voices.find(v => (v.lang || "").toLowerCase().startsWith("en-gb")) ||
     voices.find(v => (v.lang || "").toLowerCase().startsWith("en")) ||
     null;
 
-  uttr.lang = pick?.lang || "en-US";
-  if (pick) uttr.voice = pick;
+  return preferred;
+}
 
-  window.speechSynthesis.speak(uttr);
+function speakEnglish(text) {
+  if (!("speechSynthesis" in window)) return;
+
+  // 連打したとき前の音声を止める
+  try { speechSynthesis.cancel(); } catch {}
+
+  const uttr = new SpeechSynthesisUtterance(String(text));
+  uttr.rate = 1.0;
+  uttr.pitch = 1.0;
+
+  const voice = pickEnglishVoice();
+  uttr.lang = voice?.lang || "en-US";
+  if (voice) uttr.voice = voice;
+
+  speechSynthesis.speak(uttr);
 }
 
 // iOS Safari対策：声リストの準備
 if ("speechSynthesis" in window) {
-  window.speechSynthesis.onvoiceschanged = () => {
-    try { window.speechSynthesis.getVoices(); } catch {}
+  speechSynthesis.onvoiceschanged = () => {
+    try { speechSynthesis.getVoices(); } catch {}
   };
 }
 
@@ -801,7 +810,7 @@ function saveState(st) {
 function loadAutoSpeak() {
   try {
     const raw = localStorage.getItem(AUTO_SPEAK_KEY);
-    if (raw === null) return false; // 初期OFF（好みでtrueにもできます）
+    if (raw === null) return false; // 初期OFF
     return raw === "1";
   } catch {
     return false;
@@ -859,6 +868,7 @@ function nextAction() {
 }
 
 function resetAll() {
+  try { speechSynthesis.cancel(); } catch {}
   const st = freshState();
   saveState(st);
   setUI(st);
@@ -876,7 +886,7 @@ function init() {
   toggle.checked = loadAutoSpeak();
   toggle.addEventListener("change", () => {
     saveAutoSpeak(toggle.checked);
-    // ONに切り替えた瞬間、表示中の英単語を読みたい場合は以下を有効化
+    // ONに切り替えた瞬間、表示中の英単語を読みたい場合
     if (toggle.checked) {
       const st = loadState();
       if (st && st.phase === 0) {
@@ -895,6 +905,7 @@ function init() {
 
   document.getElementById("nextBtn").addEventListener("click", nextAction);
 
+  // 🔊 発音ボタン：いつでも何回でも押せる
   document.getElementById("speakBtn").addEventListener("click", () => {
     const st = loadState();
     if (!st) return;
