@@ -5,19 +5,43 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>英単語テスト（重複なしランダム）</title>
   <style>
-    body { font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
-           margin: 0; padding: 20px; }
-    .card { max-width: 720px; margin: 0 auto; padding: 18px; border: 1px solid #ddd; border-radius: 14px; }
-    .top { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
-    .badge { font-size: 14px; padding: 6px 10px; border-radius: 999px; border: 1px solid #ddd; }
+    body {
+      font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+      margin: 0; padding: 20px;
+    }
+    .card {
+      max-width: 720px; margin: 0 auto; padding: 18px;
+      border: 1px solid #ddd; border-radius: 14px;
+    }
+    .top {
+      display:flex; justify-content:space-between; align-items:center;
+      gap:12px; flex-wrap:wrap;
+    }
+    .badge {
+      font-size: 14px; padding: 6px 10px;
+      border-radius: 999px; border: 1px solid #ddd;
+    }
     .word { font-size: 44px; font-weight: 700; margin: 18px 0 10px; line-height: 1.1; }
     .meaning { font-size: 28px; margin: 10px 0 0; min-height: 40px; }
     .hint { color:#666; font-size:14px; margin-top: 10px; }
     .btns { display:flex; gap:10px; margin-top: 18px; flex-wrap: wrap; }
-    button { font-size: 18px; padding: 12px 14px; border-radius: 12px; border: 1px solid #ddd; background: #fff; }
+    button {
+      font-size: 18px; padding: 12px 14px; border-radius: 12px;
+      border: 1px solid #ddd; background: #fff;
+    }
     button:active { transform: translateY(1px); }
     .primary { font-weight: 700; }
     .danger { border-color:#f2c; }
+
+    /* Toggle */
+    .toggle {
+      display:flex; align-items:center; gap:10px;
+      margin-top: 10px; padding: 10px 12px;
+      border: 1px solid #ddd; border-radius: 12px;
+    }
+    .toggle label { font-size: 16px; user-select: none; }
+    .toggle input { width: 20px; height: 20px; }
+    .small { font-size: 13px; color:#666; margin-top: 6px; }
   </style>
 </head>
 <body>
@@ -27,40 +51,29 @@
       <div class="badge" id="mode">英→日</div>
     </div>
 
+    <!-- 自動発音スイッチ -->
+    <div class="toggle">
+      <input type="checkbox" id="autoSpeakToggle" />
+      <label for="autoSpeakToggle">英語が表示されたら自動で発音する</label>
+    </div>
+    <div class="small">※iPadでは最初だけ「🔊発音」を1回押すと安定します。</div>
+
     <div class="word" id="word">（単語リストを入れてください）</div>
     <div class="meaning" id="meaning"></div>
-    <div class="hint" id="hint">ボタン：英語表示 → 日本語表示 → 次の英語 …</div>
+    <div class="hint" id="hint">ボタン：英語表示 → 日本語表示 → 次の英語 …（🔊で発音）</div>
 
     <div class="btns">
       <button class="primary" id="nextBtn">はじめる</button>
+      <button id="speakBtn">🔊 発音</button>
       <button id="resetBtn" class="danger">リセット（最初から）</button>
     </div>
   </div>
 
 <script>
 /**
- * ▼ここに単語リストを貼ります（650語）
+ * ▼単語リスト（650語）
  * 形式： { en: "apple", ja: "りんご" }
  */
-
-
-
-
-
-/*
-const VOCAB = [
-  // 例（ここをあなたの650語で置き換え）
-  { en: "decide", ja: "決める" },
-  { en: "continue", ja: "続ける" },
-  { en: "increase", ja: "増える／増やす" },
-  { en: "reduce", ja: "減らす" },
-  { en: "provide", ja: "提供する" },
-  // ...ここに続けて650語分...
-];
-*/
-
-
-
 const VOCAB = [
   { en: "abandon", ja: "放棄する" },
   { en: "ability", ja: "能力" },
@@ -220,7 +233,7 @@ const VOCAB = [
   { en: "custom", ja: "習慣" },
   { en: "customer", ja: "客" },
   { en: "daily", ja: "毎日の" },
-  { en: "damage", ja: "損害／～を損なう" },
+  { en: "damage", ja: "損害" },
   { en: "dangerous", ja: "危険な" },
   { en: "debate", ja: "議論" },
   { en: "decide", ja: "決める" },
@@ -403,7 +416,6 @@ const VOCAB = [
   { en: "interrupt", ja: "妨げる" },
   { en: "interview", ja: "面接" },
   { en: "introduce", ja: "紹介する" },
-　{ en: "invite", ja: "招待する" },
   { en: "involve", ja: "含む／関与させる" },
   { en: "issue", ja: "問題" },
   { en: "issue concerning ～", ja: "〜に関する問題" },
@@ -537,7 +549,6 @@ const VOCAB = [
   { en: "promote health", ja: "健康を促進する" },
   { en: "protect", ja: "守る" },
   { en: "protect environment", ja: "環境を守る" },
-　{ en: "protective", ja: "保護するための／防護の" },
   { en: "provide", ja: "提供する" },
   { en: "provide service", ja: "サービスを提供する" },
   { en: "public", ja: "公共の" },
@@ -712,17 +723,45 @@ const VOCAB = [
   { en: "worth considering", ja: "検討する価値がある" },
   { en: "youth", ja: "若者" },
   { en: "zone", ja: "地帯" },
+  { en: "invite", ja: "招待する" },
+  { en: "protective", ja: "保護するための／防護の" },
 ];
 
+// ======== 設定保存キー（自動発音ON/OFF） ========
+const AUTO_SPEAK_KEY = "vocab_auto_speak_v1";
 
+// ======== 発音（Web Speech API） ========
+function speakEnglish(text) {
+  if (!("speechSynthesis" in window)) return;
 
+  // 連打したとき前の音声を止める
+  window.speechSynthesis.cancel();
 
+  const uttr = new SpeechSynthesisUtterance(text);
+  uttr.rate = 0.9; // 少しゆっくり（0.1〜10）
 
+  // 英語の声を優先して選ぶ（端末依存）
+  const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+  const pick =
+    voices.find(v => (v.lang || "").toLowerCase().startsWith("en-us")) ||
+    voices.find(v => (v.lang || "").toLowerCase().startsWith("en-gb")) ||
+    voices.find(v => (v.lang || "").toLowerCase().startsWith("en")) ||
+    null;
 
+  uttr.lang = pick?.lang || "en-US";
+  if (pick) uttr.voice = pick;
 
+  window.speechSynthesis.speak(uttr);
+}
 
+// iOS Safari対策：声リストの準備
+if ("speechSynthesis" in window) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    try { window.speechSynthesis.getVoices(); } catch {}
+  };
+}
 
-// ======== 保存キー（iPad内に保存） ========
+// ======== 保存キー（出題状態） ========
 const KEY = "vocab_app_state_v1";
 
 // ======== Fisher–Yates shuffle ========
@@ -736,11 +775,7 @@ function shuffle(arr) {
 
 function freshState() {
   const order = shuffle([...Array(VOCAB.length).keys()]);
-  return {
-    order,          // 出題順（VOCABのindex配列）
-    index: 0,       // いま何問目（0-based）
-    phase: 0,       // 0=英語表示, 1=日本語表示
-  };
+  return { order, index: 0, phase: 0 };
 }
 
 function loadState() {
@@ -748,7 +783,6 @@ function loadState() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     const st = JSON.parse(raw);
-    // 簡単な整合性チェック
     if (!st || !Array.isArray(st.order) || typeof st.index !== "number" || typeof st.phase !== "number") return null;
     if (st.order.length !== VOCAB.length) return null;
     if (st.index < 0 || st.index > VOCAB.length) return null;
@@ -763,43 +797,61 @@ function saveState(st) {
   localStorage.setItem(KEY, JSON.stringify(st));
 }
 
+// ======== 自動発音設定の保存/読込 ========
+function loadAutoSpeak() {
+  try {
+    const raw = localStorage.getItem(AUTO_SPEAK_KEY);
+    if (raw === null) return false; // 初期OFF（好みでtrueにもできます）
+    return raw === "1";
+  } catch {
+    return false;
+  }
+}
+function saveAutoSpeak(on) {
+  localStorage.setItem(AUTO_SPEAK_KEY, on ? "1" : "0");
+}
+
+// ======== UI更新 ========
 function setUI(st) {
   const wordEl = document.getElementById("word");
   const meaningEl = document.getElementById("meaning");
   const progressEl = document.getElementById("progress");
   const btn = document.getElementById("nextBtn");
 
-  // 1周終わったら新しいシャッフルで再スタート（重複なしは1周内）
+  // 1周終わったら新しいシャッフルで再スタート
   if (st.index >= VOCAB.length) {
     st = freshState();
     saveState(st);
   }
 
   const current = VOCAB[st.order[st.index]];
-
   progressEl.textContent = `${st.index + 1} / ${VOCAB.length}`;
 
   if (st.phase === 0) {
     wordEl.textContent = current.en;
     meaningEl.textContent = "";
     btn.textContent = "日本語を表示（答え合わせ）";
+
+    // ★自動発音（ONのときだけ）
+    if (loadAutoSpeak()) {
+      speakEnglish(current.en);
+    }
   } else {
     wordEl.textContent = current.en;
     meaningEl.textContent = current.ja;
-    btn.textContent = "正解だったかな？　次へGO！";
+    btn.textContent = "次へ";
   }
 }
 
+// ======== 次へ（英→日→次の英） ========
 function nextAction() {
   let st = loadState();
   if (!st) st = freshState();
 
-  // phase 0 → 1（日本語表示）
   if (st.phase === 0) {
-    st.phase = 1;
+    st.phase = 1;     // 日本語表示
   } else {
-    // phase 1 → 次の問題へ（英語表示）
-    st.phase = 0;
+    st.phase = 0;     // 次の英語へ
     st.index += 1;
   }
   saveState(st);
@@ -812,11 +864,28 @@ function resetAll() {
   setUI(st);
 }
 
+// ======== 初期化 ========
 function init() {
   if (!VOCAB.length) {
     document.getElementById("word").textContent = "VOCABが空です（単語リストを入れてください）";
     return;
   }
+
+  // 自動発音トグルの初期反映
+  const toggle = document.getElementById("autoSpeakToggle");
+  toggle.checked = loadAutoSpeak();
+  toggle.addEventListener("change", () => {
+    saveAutoSpeak(toggle.checked);
+    // ONに切り替えた瞬間、表示中の英単語を読みたい場合は以下を有効化
+    if (toggle.checked) {
+      const st = loadState();
+      if (st && st.phase === 0) {
+        const current = VOCAB[st.order[st.index]];
+        speakEnglish(current.en);
+      }
+    }
+  });
+
   let st = loadState();
   if (!st) {
     st = freshState();
@@ -825,6 +894,14 @@ function init() {
   setUI(st);
 
   document.getElementById("nextBtn").addEventListener("click", nextAction);
+
+  document.getElementById("speakBtn").addEventListener("click", () => {
+    const st = loadState();
+    if (!st) return;
+    const current = VOCAB[st.order[st.index]];
+    speakEnglish(current.en);
+  });
+
   document.getElementById("resetBtn").addEventListener("click", resetAll);
 }
 
