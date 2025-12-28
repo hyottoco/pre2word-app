@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>英検準２級 単語テスト（重複なしランダム）</title>
+  <title>英単準２トレ（重複なしランダム）</title>
 
   <style>
     /* =========================================================
@@ -32,7 +32,7 @@
       display:flex;
       justify-content:space-between;
       align-items:center;
-      gap:12px;
+      /* gap:12px; */
       flex-wrap:wrap;
     }
 
@@ -54,7 +54,7 @@
     }
 
     .word{
-      font-size: 44px;
+      font-size: 36px;
       font-weight: 800;
       margin: 18px 0 10px;
       line-height: 1.1;
@@ -101,12 +101,16 @@
       border-radius: 12px;
       gap: 10px;
       align-items: center;
-      flex-wrap: wrap;
-      transition: background .2s ease, border-color .2s ease, color .2s ease;
+      flex-wrap: nowrap;
+      /* transition: background .2s ease, border-color .2s ease, color .2s ease; */
+        width: fit-content;      /* ★ 中身に合わせる */
+        max-width: 100%;         /* ★ 画面からはみ出さない保険 */
+        flex: 0 0 auto;          /* ★ 親がflexでも伸びない */
+        align-self: flex-start;  /* ★ 親がstretchでも伸びない */
     }
-    .missBox.show{ display:flex; }
+    .missBox.show{ display:inline-flex; }
     .missBox input{ width: 22px; height: 22px; }
-    .missBox .label{ font-size: 16px; user-select: none; }
+    .missBox .label{ font-size: 16px; user-select: none; white-space: nowrap; display: inline-block;}
 
     /* =========================================================
        ダークモード（bodyに .dark を付ける）
@@ -141,32 +145,44 @@
   <div class="card">
     <div class="top">
       <div class="badge" id="progress">0 / 0</div>
-      <div class="badge" id="mode">単語：英→日</div>
+
+      <div class="row">
+        <button class="toggle small" id="audioToggle">🔊 発音：ON</button>
+        <button class="toggle small" id="themeToggle">🌙 ダーク</button>
+      </div>
     </div>
 
+
+  <!-- <div class="card">
+    <div class="top">
+      <div class="badge" id="progress">0 / 0</div>
+      <div class="badge" id="mode">単語：英→日</div>
+    </div> -->
+
     <!-- 発音ON/OFF + テーマ切替（熟語アプリと同じ位置） -->
-    <div class="row">
+    <!-- <div class="row">
       <button class="toggle small" id="audioToggle">🔊 発音：ON</button>
       <button class="toggle small" id="themeToggle">🌙 ダーク</button>
-    </div>
+    </div> -->
 
     <!-- 出題モード切替（全 / 間違いのみ） -->
     <div class="row">
       <label class="badge" style="display:flex; gap:8px; align-items:center;">
         <input type="checkbox" id="wrongOnlyToggle" style="width:18px;height:18px;" />
-        間違いリストだけ出題
+       復習開始
+        <span class="count" id="wrongCount">（0）</span>
       </label>
-      <div class="badge" id="wrongCount">間違い: 0</div>
-      <button class="small danger" id="clearWrongBtn" type="button">間違いリストを消す</button>
+      <!-- <div class="badge" id="wrongCount">間違い: 0</div> -->
+      <button class="small danger" id="clearWrongBtn" type="button">リスト消去</button>
     </div>
 
-    <div class="word" id="word">（VOCABリストを読み込み中…）</div>
+    <div class="word" id="word">（reading…）</div>
     <div class="meaning" id="meaning"></div>
 
     <!-- ★答え合わせ表示中だけ出る：間違えたチェック -->
     <div class="missBox" id="missBox">
-      <input type="checkbox" id="missToggle" />
-      <label class="label" for="missToggle">この単語は間違えた（間違いリストに入れる）</label>
+      <input type="checkbox" id="missToggle">
+      <label class="label" for="missToggle">復習リストに追加</label>
     </div>
 
     <!-- 次へ / 発音 / リセット -->
@@ -942,7 +958,7 @@ function saveWrongSet(set){
 }
 function updateWrongCountUI(){
   const set = loadWrongSet();
-  document.getElementById("wrongCount").textContent = `間違い: ${set.size}`;
+  document.getElementById("wrongCount").textContent = `覚え直し: ${set.size}`;
 }
 
 // =======================
@@ -1008,18 +1024,18 @@ function setUI(st){
   const wordEl = document.getElementById("word");
   const meaningEl = document.getElementById("meaning");
   const progressEl = document.getElementById("progress");
-  const modeEl = document.getElementById("mode");
+  // const modeEl = document.getElementById("mode");
   const btn = document.getElementById("nextBtn");
 
   const missBox = document.getElementById("missBox");
   const missToggle = document.getElementById("missToggle");
 
-  modeEl.textContent = loadWrongOnly() ? "単語：英→日（間違いのみ）" : "単語：英→日";
+  // modeEl.textContent = loadWrongOnly() ? "単語：英→日（間違いのみ）" : "単語：英→日";
 
   // プールが空なら案内
   if (!st.poolIdxs.length){
-    wordEl.textContent = "間違いリストが空です";
-    meaningEl.textContent = "「間違いリストだけ出題」をOFFにするか、間違いを登録してください。";
+    wordEl.textContent = "復習リストが空です";
+    meaningEl.textContent = "「復習開始」をOFFにするか、復習リストを登録してね";
     progressEl.textContent = "0 / 0";
     btn.textContent = "はじめる";
     missBox.classList.remove("show");
