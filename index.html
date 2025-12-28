@@ -1078,11 +1078,33 @@ function setUI(st){
   }
 }
 
+// function nextAction(){
+//   let st = loadState();
+//   if (!st){
+//     const pool = getPoolIndices();
+//     st = freshStateForPool(pool);
+//   }
+
+//   if (st.phase === 0){
+//     st.phase = 1;
+//   } else {
+//     st.phase = 0;
+//     st.index += 1;
+//   }
+//   saveState(st);
+//   setUI(st);
+// }
+
 function nextAction(){
   let st = loadState();
+
+  // ★ stateが無効（プール変化など）なら作り直す
   if (!st){
     const pool = getPoolIndices();
     st = freshStateForPool(pool);
+    saveState(st);
+    setUI(st);
+    return; // ★ここが重要：いきなり答え表示に進めない
   }
 
   if (st.phase === 0){
